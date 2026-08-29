@@ -13,6 +13,11 @@
 #
 # This pipeline lints, validates, and checksums in-repo files. It does
 # not publish GitHub releases, overwrite release assets, or deploy.
+#
+# Cloud Build triggers inject a user-specified service account. Builds
+# that run as a user-specified SA cannot use the default GCS logs
+# bucket, so options.logging must be CLOUD_LOGGING_ONLY. Do not put
+# serviceAccount in this file; the trigger supplies it.
 
 timeout: 600s
 

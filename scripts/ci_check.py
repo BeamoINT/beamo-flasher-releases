@@ -354,6 +354,21 @@ def check_cloudbuild_config(root: Path) -> dict[str, Any]:
     timeout = config.get("timeout")
     if not isinstance(timeout, str) or not re.fullmatch(r"\d+s", timeout):
         _fail("cloudbuild.yaml timeout must be a duration like 600s")
+    options = config.get("options")
+    if not isinstance(options, dict):
+        _fail("cloudbuild.yaml must set options.logging: CLOUD_LOGGING_ONLY")
+    logging = options.get("logging")
+    if logging != "CLOUD_LOGGING_ONLY":
+        _fail(
+            "cloudbuild.yaml options.logging must be CLOUD_LOGGING_ONLY "
+            "(required when Cloud Build triggers inject a user-specified "
+            "service account)"
+        )
+    if "serviceAccount" in config or "serviceAccount" in options:
+        _fail(
+            "cloudbuild.yaml must not set serviceAccount; Cloud Build "
+            "triggers inject the user-specified service account"
+        )
     return config
 
 
@@ -426,6 +441,19 @@ def run_self_test() -> None:
             pass
         else:
             _fail("self-test: unofficial builder image should have failed")
+
+        (tmp_root / "cloudbuild.yaml").write_bytes(
+            (REPO_ROOT / "cloudbuild.yaml").read_bytes()
+        )
+        no_logging = (tmp_root / "cloudbuild.yaml").read_text(encoding="utf-8")
+        no_logging = no_logging.replace("CLOUD_LOGGING_ONLY", "LEGACY")
+        (tmp_root / "cloudbuild.yaml").write_text(no_logging, encoding="utf-8")
+        try:
+            run_checks(tmp_root)
+        except CheckError:
+            pass
+        else:
+            _fail("self-test: missing CLOUD_LOGGING_ONLY should have failed")
 
         (tmp_root / "cloudbuild.yaml").write_bytes(
             (REPO_ROOT / "cloudbuild.yaml").read_bytes()
