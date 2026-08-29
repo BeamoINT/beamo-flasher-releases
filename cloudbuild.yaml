@@ -1,0 +1,46 @@
+# Cloud Build CI for BeamoINT/beamo-flasher-releases
+#
+# GCP project: social-media-499020
+# Same project as beamo-flasher. Do not submit this config anywhere else.
+#
+# Manual:
+#   gcloud builds submit --project=social-media-499020
+#
+# Intended GitHub triggers once the repo is connected to Cloud Build
+# (GitHub is not connected yet; this file is in-repo config only):
+#   - pull requests targeting main
+#   - pushes to main
+#
+# This pipeline lints, validates, and checksums in-repo files. It does
+# not publish GitHub releases, overwrite release assets, or deploy.
+
+timeout: 600s
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+tags:
+  - beamo-flasher-releases
+  - ci
+
+steps:
+  - id: assert-gcp-project
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - test "$PROJECT_ID" = "social-media-499020"
+
+  - id: lint-build-package
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - python3 scripts/ci_check.py
+
+  - id: fail-closed-self-test
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - python3 scripts/ci_check.py --self-test
